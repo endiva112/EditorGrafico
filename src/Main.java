@@ -26,6 +26,7 @@ public class Main {
         vP.setLocationRelativeTo(null);
         vP.getContentPane().setBackground(Color.WHITE);
 
+        //comentario
 
         vP.setVisible(true);
         vP.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
