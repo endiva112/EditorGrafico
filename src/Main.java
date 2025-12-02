@@ -4,11 +4,17 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Path2D;
+import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.net.URL;
+import javax.imageio.ImageIO;
 
 public class Main {
     final static String DESARROLLADOR = "Enrique Díaz Valenzuela";
-    final static String VERSIONPROGRAMA = "0.4";
+    final static String VERSIONPROGRAMA = "0.5";
     final static String FECHAMODIFICACION = "2 / 12 / 2025";
 
     private static Color colorActual = Color.BLACK;
@@ -73,10 +79,8 @@ public class Main {
         //region herramientas
         JToolBar herramientas = new JToolBar();
         JButton btnLapiz = crearSubHerramienta("resources/brush.png");
-        //JButton btnGoma = crearSubHerramienta("resources/eraser.png");    //no se va a hacer para esta entrega
 
         herramientas.add(btnLapiz);
-        //herramientas.add(btnGoma);
         //endregion
 
         //region opcionesTrazo
@@ -94,17 +98,17 @@ public class Main {
         //region ordenar menus
         JPanel seccionIzquierda = new JPanel();
         seccionIzquierda.setLayout(new BoxLayout(seccionIzquierda, BoxLayout.X_AXIS));
-        seccionIzquierda.add(Box.createHorizontalStrut(10)); // Margen izquierdo
+        seccionIzquierda.add(Box.createHorizontalStrut(10));
         seccionIzquierda.add(formas);
 
         JPanel seccionDerecha = new JPanel();
         seccionDerecha.setLayout(new BoxLayout(seccionDerecha, BoxLayout.X_AXIS));
         seccionDerecha.add(herramientas);
-        seccionDerecha.add(Box.createHorizontalStrut(10)); // Espacio entre herramientas y slider
+        seccionDerecha.add(Box.createHorizontalStrut(10));
         seccionDerecha.add(opcionesTrazoSlider);
-        seccionDerecha.add(Box.createHorizontalStrut(10)); // Espacio entre slider y color
+        seccionDerecha.add(Box.createHorizontalStrut(10));
         seccionDerecha.add(opcionesTrazoColor);
-        seccionDerecha.add(Box.createHorizontalStrut(10)); // Margen derecho
+        seccionDerecha.add(Box.createHorizontalStrut(10));
 
         formas.setFloatable(false);
         formas.setBorder(BorderFactory.createEmptyBorder());
@@ -156,8 +160,7 @@ public class Main {
         vPrincipal.add(estadoBar, BorderLayout.SOUTH);
 
         vPrincipal.setVisible(true);
-        vPrincipal.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
+        vPrincipal.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
         //region FUNCIONALIDAD
         //BARRA DE ESTADO
@@ -171,7 +174,7 @@ public class Main {
                     "Este programa ha sido desarrollado por: " + DESARROLLADOR + "\n" +
                             "Se encuentra en su versión " + VERSIONPROGRAMA + "\n" +
                             "La última modificación se hizo el " + FECHAMODIFICACION,
-                    "A cerca de este Bloc de notas",
+                    "A cerca de este Editor Gráfico",
                     JOptionPane.INFORMATION_MESSAGE);
         });
 
@@ -193,7 +196,6 @@ public class Main {
         //Evento al hacer clic
         areaDibujo.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
-                //Si es clic izquierdo, trazo
                 if (SwingUtilities.isLeftMouseButton(e)) {
                     trazoActual = new Path2D.Float();
                     trazoActual.moveTo(e.getX(), e.getY());
@@ -205,11 +207,38 @@ public class Main {
         //Evento al arrastrar
         areaDibujo.addMouseMotionListener(new MouseMotionAdapter() {
             public void mouseDragged(MouseEvent e) {
-                //Si mantenemos clic izquierdo, añadimos puntos al trazo actual
                 if (!SwingUtilities.isRightMouseButton(e)) {
                     trazoActual.lineTo(e.getX(), e.getY());
                     areaDibujo.repaint();
                 }
+            }
+        });
+
+        //NUEVO
+        subNuevo.addActionListener(e -> {
+            nuevoArchivo(areaDibujo, vPrincipal);
+        });
+
+        //CARGAR
+        subAbrir.addActionListener(e -> {
+            abrirArchivo(areaDibujo, vPrincipal);
+        });
+
+        //GUARDAR
+        subGuardar.addActionListener(e -> {
+            guardarArchivo(areaDibujo, vPrincipal);
+        });
+
+        //SALIR
+        subSalir.addActionListener(e -> {
+            guardarYSalir(areaDibujo, vPrincipal);
+        });
+
+        //CERRAR VENTANA (X)
+        vPrincipal.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                guardarYSalir(areaDibujo, vPrincipal);
             }
         });
 
@@ -260,9 +289,8 @@ public class Main {
             Image img = icon.getImage().getScaledInstance(24, 24, Image.SCALE_SMOOTH);
             ImageIcon iconEscalado = new ImageIcon(img);
             aux.setIcon(iconEscalado);
-
         }
-        aux.setFocusable(false); // se ve mejor al ser pulsado
+        aux.setFocusable(false);
         return aux;
     }
 
@@ -278,5 +306,132 @@ public class Main {
         panelColor.setPreferredSize(new Dimension(30, 15));
         panelColor.setBackground(colorActual);
         panelColor.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
+    }
+
+    private static void guardarYSalir(AreaDibujo areaDibujo, JFrame ventana) {
+        if (areaDibujo.isModificado()) {
+            int opcion = preguntarGuardar(ventana);
+            if (opcion == 0) { // Guardar
+                guardarArchivo(areaDibujo, ventana);
+                ventana.dispose();
+            } else if (opcion == 1) { // Cerrar sin guardar
+                ventana.dispose();
+            }
+            // Si es 2 (Cancelar), no hace nada
+        } else {
+            ventana.dispose();
+        }
+    }
+
+    private static int preguntarGuardar(JFrame padre) {
+        Object[] opciones = {"Guardar", "Cerrar sin guardar", "Cancelar"};
+        int seleccion = JOptionPane.showOptionDialog(
+                padre,
+                "Hay cambios sin guardar. ¿Qué deseas hacer?",
+                "Editor Gráfico",
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.WARNING_MESSAGE,
+                null,
+                opciones,
+                opciones[0]
+        );
+        return seleccion; // 0 = Guardar, 1 = Cerrar sin guardar, 2 = Cancelar
+    }
+
+    private static void abrirArchivo(AreaDibujo areaDibujo, JFrame padre) {
+        JFileChooser exploradorDeCarpetas = new JFileChooser();
+        exploradorDeCarpetas.setDialogTitle("Abrir imagen");
+        exploradorDeCarpetas.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Imágenes", "png", "jpg", "jpeg"));
+
+        int eleccionUsuario = exploradorDeCarpetas.showOpenDialog(padre);
+
+        if (eleccionUsuario == JFileChooser.APPROVE_OPTION) {
+            File archivoACargar = exploradorDeCarpetas.getSelectedFile();
+            try {
+                BufferedImage imagen = ImageIO.read(archivoACargar);
+                areaDibujo.cargarImagen(imagen);
+                areaDibujo.marcarComoGuardado();
+
+                JOptionPane.showMessageDialog(padre,
+                        "Imagen cargada exitosamente",
+                        "Editor Gráfico",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(padre,
+                        "Error al cargar la imagen: " + e.getMessage(),
+                        "Editor Gráfico",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private static void guardarArchivo(AreaDibujo areaDibujo, JFrame padre) {
+        JFileChooser exploradorDeCarpetas = new JFileChooser();
+        exploradorDeCarpetas.setDialogTitle("Guardar imagen");
+
+        // Filtro para formatos de imagen
+        exploradorDeCarpetas.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Imágenes PNG", "png"));
+
+        int eleccionUsuario = exploradorDeCarpetas.showSaveDialog(padre);
+
+        if (eleccionUsuario == JFileChooser.APPROVE_OPTION) {
+            File archivoAGuardar = exploradorDeCarpetas.getSelectedFile();
+
+            // Asegurarse de que tenga la extensión .png
+            if (!archivoAGuardar.getName().toLowerCase().endsWith(".png")) {
+                archivoAGuardar = new File(archivoAGuardar.getAbsolutePath() + ".png");
+            }
+
+            try {
+                // Crear una imagen del área de dibujo
+                BufferedImage imagen = new BufferedImage(
+                        areaDibujo.getWidth(),
+                        areaDibujo.getHeight(),
+                        BufferedImage.TYPE_INT_ARGB
+                );
+
+                // Dibujar el contenido del areaDibujo en la imagen
+                Graphics2D g2 = imagen.createGraphics();
+                g2.setColor(Color.WHITE);
+                g2.fillRect(0, 0, imagen.getWidth(), imagen.getHeight());
+                areaDibujo.paint(g2);
+                g2.dispose();
+
+                // Guardar la imagen
+                ImageIO.write(imagen, "PNG", archivoAGuardar);
+
+                // Marcar como guardado
+                areaDibujo.marcarComoGuardado();
+
+                JOptionPane.showMessageDialog(padre,
+                        "Imagen guardada exitosamente",
+                        "Editor Gráfico",
+                        JOptionPane.INFORMATION_MESSAGE);
+
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(padre,
+                        "Error al guardar la imagen: " + ex.getMessage(),
+                        "Editor Gráfico",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private static void nuevoArchivo(AreaDibujo areaDibujo, JFrame vPrincipal) {
+        if (areaDibujo.isModificado()) {
+            int opcion = preguntarGuardar(vPrincipal);
+            if (opcion == 0) { // Guardar
+                guardarArchivo(areaDibujo, vPrincipal);
+                areaDibujo.borrarTrazos();
+                areaDibujo.marcarComoGuardado();
+            } else if (opcion == 1) { // No guardar
+                areaDibujo.borrarTrazos();
+                areaDibujo.marcarComoGuardado();
+            }
+        } else {
+            areaDibujo.borrarTrazos();
+        }
     }
 }
