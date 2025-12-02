@@ -10,17 +10,23 @@ import javax.swing.JComponent;
 public class AreaDibujo extends JComponent {
 
     private ArrayList<Trazo> trazos;
-    private boolean modificado; // Variable para rastrear cambios
-    private BufferedImage imagenFondo;  //Esto me permitirá cargar png como fondo de mi AreaDibujo
+    private boolean modificado;
+    private BufferedImage imagenFondo;
 
     public AreaDibujo() {
         trazos = new ArrayList<>();
-        modificado = false; // Inicialmente no hay cambios
+        modificado = false;
     }
 
     public void agregarTrazo(Path2D trazo, Color color, float anchoTrazo) {
-        trazos.add(new Trazo(trazo, color, anchoTrazo));
-        modificado = true; // Se ha hecho un cambio
+        trazos.add(new Trazo(trazo, color, anchoTrazo, false)); // false = sin relleno
+        modificado = true;
+        repaint();
+    }
+
+    public void agregarForma(Path2D trazo, Color color, float anchoTrazo, boolean relleno) {
+        trazos.add(new Trazo(trazo, color, anchoTrazo, relleno));
+        modificado = true;
         repaint();
     }
 
@@ -34,34 +40,30 @@ public class AreaDibujo extends JComponent {
     public void borrarUltimoTrazo() {
         if (trazos.size() > 0) {
             trazos.remove(trazos.size() - 1);
-            modificado = true; // Se ha hecho un cambio
+            modificado = true;
             repaint();
         }
     }
 
-    // Para saber si hay cambios sin guardar
     public boolean isModificado() {
         return modificado;
     }
 
-    // Para marcar como guardado (después de guardar el archivo)
     public void marcarComoGuardado() {
         modificado = false;
     }
 
-    public void cargarImagen(BufferedImage imagen) {
-        this.imagenFondo = imagen;
-        this.trazos.clear(); // Limpia los trazos anteriores
-        this.modificado = false;
-        repaint();
-    }
-
-    // Para obtener el número de trazos (útil para saber si está vacío)
     public int getCantidadTrazos() {
         return trazos.size();
     }
 
-    @Override
+    public void cargarImagen(BufferedImage imagen) {
+        this.imagenFondo = imagen;
+        this.trazos.clear();
+        this.modificado = false;
+        repaint();
+    }
+
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
@@ -71,11 +73,15 @@ public class AreaDibujo extends JComponent {
             g2.drawImage(imagenFondo, 0, 0, null);
         }
 
-        // Luego dibuja los trazos encima
         for (Trazo trazoActual : trazos) {
             g2.setColor(trazoActual.color);
             g2.setStroke(new BasicStroke(trazoActual.anchoTrazo));
-            g2.draw(trazoActual.trazo);
+
+            if (trazoActual.relleno) {
+                g2.fill(trazoActual.trazo); // Rellenar la forma
+            } else {
+                g2.draw(trazoActual.trazo); // Solo el contorno
+            }
         }
     }
 
@@ -83,11 +89,13 @@ public class AreaDibujo extends JComponent {
         private Path2D trazo;
         private Color color;
         private float anchoTrazo;
+        private boolean relleno;
 
-        public Trazo(Path2D trazo, Color color, float anchoTrazo) {
+        public Trazo(Path2D trazo, Color color, float anchoTrazo, boolean relleno) {
             this.trazo = trazo;
             this.color = color;
             this.anchoTrazo = anchoTrazo;
+            this.relleno = relleno;
         }
     }
 }

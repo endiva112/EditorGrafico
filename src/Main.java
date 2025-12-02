@@ -12,12 +12,15 @@ import javax.imageio.ImageIO;
 
 public class Main {
     final static String DESARROLLADOR = "Enrique Díaz Valenzuela";
-    final static String VERSIONPROGRAMA = "0.6";
+    final static String VERSIONPROGRAMA = "1.0";
     final static String FECHAMODIFICACION = "2 / 12 / 2025";
 
     private static Color colorActual = Color.BLACK;
     private static float anchoTrazoActual = 1f;
     private static Path2D.Float trazoActual;
+    private static String herramientaActual = "lapiz"; // "lapiz", "circulo", "cuadrado", "triangulo", "pentagono"
+    private static Point puntoInicial;
+    private static boolean conRelleno = false; // Controla si las formas tienen relleno
 
     public static void main(String[] args) {
         JFrame vPrincipal = new JFrame();
@@ -63,12 +66,12 @@ public class Main {
 
         //region formas
         JToolBar formas  = new JToolBar();
-        JButton btnCiruclo = crearSubHerramienta("resources/circle.png");
+        JButton btnCirculo = crearSubHerramienta("resources/circle.png");
         JButton btnCuadrado = crearSubHerramienta("resources/square.png");
         JButton btnTriangulo = crearSubHerramienta("resources/triangle.png");
         JButton btnPentagono = crearSubHerramienta("resources/pentagon.png");
 
-        formas.add(btnCiruclo);
+        formas.add(btnCirculo);
         formas.add(btnCuadrado);
         formas.add(btnTriangulo);
         formas.add(btnPentagono);
@@ -84,10 +87,23 @@ public class Main {
         //region opcionesTrazo
         JToolBar opcionesTrazoSlider = new JToolBar();
         JToolBar opcionesTrazoColor = new JToolBar();
+        JToolBar opcionesRelleno = new JToolBar();
 
         JSlider slider = new JSlider(1, 80, 1);
         configurarSlider(slider);
         JButton btnColor = crearSubHerramienta("resources/palette.png");
+
+        // Botones para relleno
+        JButton btnSinRelleno = new JButton("Sin relleno");
+        JButton btnConRelleno = new JButton("Con relleno");
+        btnSinRelleno.setFocusable(false);
+        btnConRelleno.setFocusable(false);
+
+        // Resaltar el botón activo
+        btnSinRelleno.setBackground(new Color(200, 200, 200));
+
+        opcionesRelleno.add(btnSinRelleno);
+        opcionesRelleno.add(btnConRelleno);
 
         opcionesTrazoSlider.add(slider);
         opcionesTrazoColor.add(btnColor);
@@ -102,6 +118,8 @@ public class Main {
         JPanel seccionDerecha = new JPanel();
         seccionDerecha.setLayout(new BoxLayout(seccionDerecha, BoxLayout.X_AXIS));
         seccionDerecha.add(herramientas);
+        seccionDerecha.add(Box.createHorizontalStrut(10));
+        seccionDerecha.add(opcionesRelleno);
         seccionDerecha.add(Box.createHorizontalStrut(10));
         seccionDerecha.add(opcionesTrazoSlider);
         seccionDerecha.add(Box.createHorizontalStrut(10));
@@ -119,6 +137,9 @@ public class Main {
 
         opcionesTrazoColor.setFloatable(false);
         opcionesTrazoColor.setBorder(BorderFactory.createEmptyBorder());
+
+        opcionesRelleno.setFloatable(false);
+        opcionesRelleno.setBorder(BorderFactory.createEmptyBorder());
         //endregion
 
         menuHerramientas.add(seccionIzquierda, BorderLayout.WEST);
@@ -152,7 +173,7 @@ public class Main {
         estadoBar.add(infoSection, BorderLayout.EAST);
         //endregion
 
-        //region memuContextual
+        //region menuContextual
         JPopupMenu menuContextual = new JPopupMenu();
 
         JMenuItem mDeshacerTrazo = new JMenuItem("Deshacer ultimo trazo");
@@ -203,13 +224,47 @@ public class Main {
             }
         });
 
+        //OPCIONES DE RELLENO
+        btnSinRelleno.addActionListener(e -> {
+            conRelleno = false;
+            btnSinRelleno.setBackground(new Color(200, 200, 200));
+            btnConRelleno.setBackground(null);
+        });
+
+        btnConRelleno.addActionListener(e -> {
+            conRelleno = true;
+            btnConRelleno.setBackground(new Color(200, 200, 200));
+            btnSinRelleno.setBackground(null);
+        });
+
+        //SELECCIÓN DE HERRAMIENTAS
+        btnLapiz.addActionListener(e -> herramientaActual = "lapiz");
+        btnCirculo.addActionListener(e -> herramientaActual = "circulo");
+        btnCuadrado.addActionListener(e -> herramientaActual = "cuadrado");
+        btnTriangulo.addActionListener(e -> herramientaActual = "triangulo");
+        btnPentagono.addActionListener(e -> herramientaActual = "pentagono");
+
         //Evento al hacer clic
         areaDibujo.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
                 if (SwingUtilities.isLeftMouseButton(e)) {
-                    trazoActual = new Path2D.Float();
-                    trazoActual.moveTo(e.getX(), e.getY());
-                    areaDibujo.agregarTrazo(trazoActual, colorActual, anchoTrazoActual);
+                    puntoInicial = e.getPoint();
+
+                    if (herramientaActual.equals("lapiz")) {
+                        trazoActual = new Path2D.Float();
+                        trazoActual.moveTo(e.getX(), e.getY());
+                        areaDibujo.agregarTrazo(trazoActual, colorActual, anchoTrazoActual);
+                    }
+                }
+            }
+
+            public void mouseReleased(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e) && puntoInicial != null) {
+                    if (!herramientaActual.equals("lapiz")) {
+                        // Dibujar la forma final
+                        dibujarForma(areaDibujo, puntoInicial, e.getPoint(), herramientaActual);
+                    }
+                    puntoInicial = null;
                 }
             }
         });
@@ -218,8 +273,10 @@ public class Main {
         areaDibujo.addMouseMotionListener(new MouseMotionAdapter() {
             public void mouseDragged(MouseEvent e) {
                 if (!SwingUtilities.isRightMouseButton(e)) {
-                    trazoActual.lineTo(e.getX(), e.getY());
-                    areaDibujo.repaint();
+                    if (herramientaActual.equals("lapiz")) {
+                        trazoActual.lineTo(e.getX(), e.getY());
+                        areaDibujo.repaint();
+                    }
                 }
             }
         });
@@ -262,6 +319,69 @@ public class Main {
             areaDibujo.borrarTodo();
         });
         //endregion
+    }
+
+    private static void dibujarForma(AreaDibujo areaDibujo, Point inicio, Point fin, String forma) {
+        int x = Math.min(inicio.x, fin.x);
+        int y = Math.min(inicio.y, fin.y);
+        int width = Math.abs(fin.x - inicio.x);
+        int height = Math.abs(fin.y - inicio.y);
+
+        Path2D.Float path = new Path2D.Float();
+
+        switch (forma) {
+            case "circulo" -> {
+                // Dibujar círculo
+                int size = Math.max(width, height);
+                for (int i = 0; i <= 360; i++) {
+                    double angle = Math.toRadians(i);
+                    double px = x + size / 2.0 + (size / 2.0) * Math.cos(angle);
+                    double py = y + size / 2.0 + (size / 2.0) * Math.sin(angle);
+                    if (i == 0) {
+                        path.moveTo(px, py);
+                    } else {
+                        path.lineTo(px, py);
+                    }
+                }
+                path.closePath();
+            }
+            case "cuadrado" -> {
+                // Dibujar cuadrado
+                path.moveTo(x, y);
+                path.lineTo(x + width, y);
+                path.lineTo(x + width, y + height);
+                path.lineTo(x, y + height);
+                path.closePath();
+            }
+            case "triangulo" -> {
+                // Dibujar triángulo
+                int centroX = x + width / 2;
+                path.moveTo(centroX, y);
+                path.lineTo(x, y + height);
+                path.lineTo(x + width, y + height);
+                path.closePath();
+            }
+            case "pentagono" -> {
+                // Dibujar pentágono
+                int centroX = x + width / 2;
+                int centroY = y + height / 2;
+                int radio = Math.min(width, height) / 2;
+                for (int i = 0; i < 5; i++) {
+                    double angle = Math.toRadians(i * 72 - 90); // -90 para que apunte hacia arriba
+                    double px = centroX + radio * Math.cos(angle);
+                    double py = centroY + radio * Math.sin(angle);
+                    if (i == 0) {
+                        path.moveTo(px, py);
+                    } else {
+                        path.lineTo(px, py);
+                    }
+                }
+                path.closePath();
+            }
+        }
+
+        // Agregar la forma con o sin relleno
+        areaDibujo.agregarForma(path, colorActual, anchoTrazoActual, conRelleno);
     }
 
     private static void configurarVPrincipal(JFrame vPrincipal) {
@@ -330,13 +450,12 @@ public class Main {
     private static void guardarYSalir(AreaDibujo areaDibujo, JFrame ventana) {
         if (areaDibujo.isModificado()) {
             int opcion = preguntarGuardar(ventana);
-            if (opcion == 0) { // Guardar
+            if (opcion == 0) {
                 guardarArchivo(areaDibujo, ventana);
                 ventana.dispose();
-            } else if (opcion == 1) { // Cerrar sin guardar
+            } else if (opcion == 1) {
                 ventana.dispose();
             }
-            // Si es 2 (Cancelar), no hace nada
         } else {
             ventana.dispose();
         }
@@ -354,7 +473,7 @@ public class Main {
                 opciones,
                 opciones[0]
         );
-        return seleccion; // 0 = Guardar, 1 = Cerrar sin guardar, 2 = Cancelar
+        return seleccion;
     }
 
     private static void abrirArchivo(AreaDibujo areaDibujo, JFrame padre) {
@@ -389,7 +508,6 @@ public class Main {
         JFileChooser exploradorDeCarpetas = new JFileChooser();
         exploradorDeCarpetas.setDialogTitle("Guardar imagen");
 
-        // Filtro para formatos de imagen
         exploradorDeCarpetas.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
                 "Imágenes PNG", "png"));
 
@@ -398,30 +516,25 @@ public class Main {
         if (eleccionUsuario == JFileChooser.APPROVE_OPTION) {
             File archivoAGuardar = exploradorDeCarpetas.getSelectedFile();
 
-            // Asegurarse de que tenga la extensión .png
             if (!archivoAGuardar.getName().toLowerCase().endsWith(".png")) {
                 archivoAGuardar = new File(archivoAGuardar.getAbsolutePath() + ".png");
             }
 
             try {
-                // Crear una imagen del área de dibujo
                 BufferedImage imagen = new BufferedImage(
                         areaDibujo.getWidth(),
                         areaDibujo.getHeight(),
                         BufferedImage.TYPE_INT_ARGB
                 );
 
-                // Dibujar el contenido del areaDibujo en la imagen
                 Graphics2D g2 = imagen.createGraphics();
                 g2.setColor(Color.WHITE);
                 g2.fillRect(0, 0, imagen.getWidth(), imagen.getHeight());
                 areaDibujo.paint(g2);
                 g2.dispose();
 
-                // Guardar la imagen
                 ImageIO.write(imagen, "PNG", archivoAGuardar);
 
-                // Marcar como guardado
                 areaDibujo.marcarComoGuardado();
 
                 JOptionPane.showMessageDialog(padre,
@@ -441,11 +554,11 @@ public class Main {
     private static void nuevoArchivo(AreaDibujo areaDibujo, JFrame vPrincipal) {
         if (areaDibujo.isModificado()) {
             int opcion = preguntarGuardar(vPrincipal);
-            if (opcion == 0) { // Guardar
+            if (opcion == 0) {
                 guardarArchivo(areaDibujo, vPrincipal);
                 areaDibujo.borrarTodo();
                 areaDibujo.marcarComoGuardado();
-            } else if (opcion == 1) { // No guardar
+            } else if (opcion == 1) {
                 areaDibujo.borrarTodo();
                 areaDibujo.marcarComoGuardado();
             }
