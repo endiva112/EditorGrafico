@@ -1,24 +1,32 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.geom.Path2D;
 import java.net.URL;
 
 public class Main {
     final static String DESARROLLADOR = "Enrique Díaz Valenzuela";
-    final static String VERSIONPROGRAMA = "0.1";
+    final static String VERSIONPROGRAMA = "0.4";
     final static String FECHAMODIFICACION = "2 / 12 / 2025";
+
+    private static Color colorActual = Color.BLACK;
+    private static float anchoTrazoActual = 1f;
+    private static Path2D.Float trazoActual;
 
     public static void main(String[] args) {
         JFrame vPrincipal = new JFrame();
         configurarVPrincipal(vPrincipal);
 
-        //Componentes
-        JMenuBar menuBar = new JMenuBar();
-
         //region menuBar
+        JMenuBar menuBar = new JMenuBar();
         JMenu subMenuArchivo = new JMenu("Archivo");
+        JMenu subVer = new JMenu("Ver");
         JMenu subAyuda = new JMenu("Ayuda");
 
         menuBar.add(subMenuArchivo);
+        menuBar.add(subVer);
         menuBar.add(subAyuda);
         //endregion
 
@@ -32,6 +40,17 @@ public class Main {
         subMenuArchivo.add(subAbrir);
         subMenuArchivo.add(subGuardar);
         subMenuArchivo.add(subSalir);
+        //endregion
+
+        //region subVer
+        JCheckBoxMenuItem subBarraEstado = new JCheckBoxMenuItem("Mostrar barra de estado");
+        subBarraEstado.setSelected(true);
+        subVer.add(subBarraEstado);
+        //endregion
+
+        //region subAyuda
+        JMenuItem subAcercaDe = new JMenuItem("A cerca de Este Programa");
+        subAyuda.add(subAcercaDe);
         //endregion
 
         //region toolsBar
@@ -54,10 +73,10 @@ public class Main {
         //region herramientas
         JToolBar herramientas = new JToolBar();
         JButton btnLapiz = crearSubHerramienta("resources/brush.png");
-        JButton btnGoma = crearSubHerramienta("resources/eraser.png");
+        //JButton btnGoma = crearSubHerramienta("resources/eraser.png");    //no se va a hacer para esta entrega
 
         herramientas.add(btnLapiz);
-        herramientas.add(btnGoma);
+        //herramientas.add(btnGoma);
         //endregion
 
         //region opcionesTrazo
@@ -98,16 +117,103 @@ public class Main {
 
         opcionesTrazoColor.setFloatable(false);
         opcionesTrazoColor.setBorder(BorderFactory.createEmptyBorder());
+        //endregion
 
         menuHerramientas.add(seccionIzquierda, BorderLayout.WEST);
         menuHerramientas.add(seccionDerecha, BorderLayout.EAST);
         //endregion
 
+        //region AreaDibujo
+        AreaDibujo areaDibujo = new AreaDibujo();
+        //endregion
+
+        //region barraEstado
+        JPanel estadoBar = new JPanel();
+        estadoBar.setLayout(new BorderLayout());
+        estadoBar.setPreferredSize(new Dimension(0, 20));
+
+        //region info
+        JPanel infoSection = new JPanel();
+        infoSection.setLayout(new FlowLayout(FlowLayout.RIGHT, 20, 2));
+
+        JLabel tamanioTrazo = new JLabel("Tamaño del trazo: " + anchoTrazoActual);
+
+        JPanel panelColor = new JPanel();
+        configurarPanelColor(panelColor);
+        JLabel infoVersion = new JLabel("v " + VERSIONPROGRAMA);
+
+        infoSection.add(tamanioTrazo);
+        infoSection.add(panelColor);
+        infoSection.add(infoVersion);
+        //endregion
+
+        estadoBar.add(infoSection, BorderLayout.EAST);
+        //endregion
+
         vPrincipal.setJMenuBar(menuBar);
         vPrincipal.add(menuHerramientas, BorderLayout.NORTH);
+        vPrincipal.add(areaDibujo, BorderLayout.CENTER);
+        vPrincipal.add(estadoBar, BorderLayout.SOUTH);
 
         vPrincipal.setVisible(true);
         vPrincipal.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+
+        //region FUNCIONALIDAD
+        //BARRA DE ESTADO
+        subBarraEstado.addActionListener(e -> {
+            estadoBar.setVisible(subBarraEstado.isSelected());
+        });
+
+        //AYUDA
+        subAcercaDe.addActionListener(e -> {
+            JOptionPane.showMessageDialog(null,
+                    "Este programa ha sido desarrollado por: " + DESARROLLADOR + "\n" +
+                            "Se encuentra en su versión " + VERSIONPROGRAMA + "\n" +
+                            "La última modificación se hizo el " + FECHAMODIFICACION,
+                    "A cerca de este Bloc de notas",
+                    JOptionPane.INFORMATION_MESSAGE);
+        });
+
+        //SLIDER
+        slider.addChangeListener(e -> {
+            anchoTrazoActual = slider.getValue();
+            tamanioTrazo.setText("Tamaño del trazo: " + (int)anchoTrazoActual);
+        });
+
+        //SELECTOR DE COLOR
+        btnColor.addActionListener(e -> {
+            Color nuevoColor = JColorChooser.showDialog(vPrincipal, "Selecciona un color", colorActual);
+            if (nuevoColor != null) {
+                colorActual = nuevoColor;
+                panelColor.setBackground(colorActual);
+            }
+        });
+
+        //Evento al hacer clic
+        areaDibujo.addMouseListener(new MouseAdapter() {
+            public void mousePressed(MouseEvent e) {
+                //Si es clic izquierdo, trazo
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    trazoActual = new Path2D.Float();
+                    trazoActual.moveTo(e.getX(), e.getY());
+                    areaDibujo.agregarTrazo(trazoActual, colorActual, anchoTrazoActual);
+                }
+            }
+        });
+
+        //Evento al arrastrar
+        areaDibujo.addMouseMotionListener(new MouseMotionAdapter() {
+            public void mouseDragged(MouseEvent e) {
+                //Si mantenemos clic izquierdo, añadimos puntos al trazo actual
+                if (!SwingUtilities.isRightMouseButton(e)) {
+                    trazoActual.lineTo(e.getX(), e.getY());
+                    areaDibujo.repaint();
+                }
+            }
+        });
+
+        //endregion
     }
 
     private static void configurarVPrincipal(JFrame vPrincipal) {
@@ -166,5 +272,11 @@ public class Main {
         slider.setMajorTickSpacing(20);
         slider.setMinorTickSpacing(5);
         slider.setPaintTicks(true);
+    }
+
+    private static void configurarPanelColor(JPanel panelColor) {
+        panelColor.setPreferredSize(new Dimension(30, 15));
+        panelColor.setBackground(colorActual);
+        panelColor.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
     }
 }
