@@ -38,6 +38,7 @@ public class Main {
         JPanel menuHerramientas = new JPanel();
         configurarMenuHerramientas(menuHerramientas);
 
+        //region formas
         JToolBar formas  = new JToolBar();
         JButton btnCiruclo = crearSubHerramienta("resources/circle.png");
         JButton btnCuadrado = crearSubHerramienta("resources/square.png");
@@ -48,29 +49,30 @@ public class Main {
         formas.add(btnCuadrado);
         formas.add(btnTriangulo);
         formas.add(btnPentagono);
+        //endregion
 
+        //region herramientas
         JToolBar herramientas = new JToolBar();
         JButton btnLapiz = crearSubHerramienta("resources/brush.png");
         JButton btnGoma = crearSubHerramienta("resources/eraser.png");
 
         herramientas.add(btnLapiz);
         herramientas.add(btnGoma);
+        //endregion
 
+        //region opcionesTrazo
         JToolBar opcionesTrazoSlider = new JToolBar();
         JToolBar opcionesTrazoColor = new JToolBar();
 
         JSlider slider = new JSlider(1, 80, 1);
-        slider.setPreferredSize(new Dimension(300, 24));
-        slider.setFocusable(false);
-        slider.setMajorTickSpacing(20);
-        slider.setMinorTickSpacing(5);
-        slider.setPaintTicks(true);
-
+        configurarSlider(slider);
         JButton btnColor = crearSubHerramienta("resources/palette.png");
 
         opcionesTrazoSlider.add(slider);
         opcionesTrazoColor.add(btnColor);
+        //endregion
 
+        //region ordenar menus
         JPanel seccionIzquierda = new JPanel();
         seccionIzquierda.setLayout(new BoxLayout(seccionIzquierda, BoxLayout.X_AXIS));
         seccionIzquierda.add(Box.createHorizontalStrut(10)); // Margen izquierdo
@@ -99,7 +101,6 @@ public class Main {
 
         menuHerramientas.add(seccionIzquierda, BorderLayout.WEST);
         menuHerramientas.add(seccionDerecha, BorderLayout.EAST);
-
         //endregion
 
         vPrincipal.setJMenuBar(menuBar);
@@ -157,5 +158,13 @@ public class Main {
         }
         aux.setFocusable(false); // se ve mejor al ser pulsado
         return aux;
+    }
+
+    private static void configurarSlider(JSlider slider) {
+        slider.setPreferredSize(new Dimension(300, 24));
+        slider.setFocusable(false);
+        slider.setMajorTickSpacing(20);
+        slider.setMinorTickSpacing(5);
+        slider.setPaintTicks(true);
     }
 }
