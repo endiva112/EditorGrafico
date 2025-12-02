@@ -5,16 +5,14 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
 import javax.imageio.ImageIO;
 
 public class Main {
     final static String DESARROLLADOR = "Enrique Díaz Valenzuela";
-    final static String VERSIONPROGRAMA = "0.5";
+    final static String VERSIONPROGRAMA = "0.6";
     final static String FECHAMODIFICACION = "2 / 12 / 2025";
 
     private static Color colorActual = Color.BLACK;
@@ -154,6 +152,18 @@ public class Main {
         estadoBar.add(infoSection, BorderLayout.EAST);
         //endregion
 
+        //region memuContextual
+        JPopupMenu menuContextual = new JPopupMenu();
+
+        JMenuItem mDeshacerTrazo = new JMenuItem("Deshacer ultimo trazo");
+        menuContextual.add(mDeshacerTrazo);
+
+        JMenuItem mBorrarTodo = new JMenuItem("Borrar todo");
+        menuContextual.add(mBorrarTodo);
+
+        areaDibujo.setComponentPopupMenu(menuContextual);
+        //endregion
+
         vPrincipal.setJMenuBar(menuBar);
         vPrincipal.add(menuHerramientas, BorderLayout.NORTH);
         vPrincipal.add(areaDibujo, BorderLayout.CENTER);
@@ -242,6 +252,15 @@ public class Main {
             }
         });
 
+        //BORRAR ULTIMO TRAZO
+        mDeshacerTrazo.addActionListener(e -> {
+            areaDibujo.borrarUltimoTrazo();
+        });
+
+        //BORRADO COMPLETO
+        mBorrarTodo.addActionListener(e -> {
+            areaDibujo.borrarTodo();
+        });
         //endregion
     }
 
@@ -424,14 +443,14 @@ public class Main {
             int opcion = preguntarGuardar(vPrincipal);
             if (opcion == 0) { // Guardar
                 guardarArchivo(areaDibujo, vPrincipal);
-                areaDibujo.borrarTrazos();
+                areaDibujo.borrarTodo();
                 areaDibujo.marcarComoGuardado();
             } else if (opcion == 1) { // No guardar
-                areaDibujo.borrarTrazos();
+                areaDibujo.borrarTodo();
                 areaDibujo.marcarComoGuardado();
             }
         } else {
-            areaDibujo.borrarTrazos();
+            areaDibujo.borrarTodo();
         }
     }
 }

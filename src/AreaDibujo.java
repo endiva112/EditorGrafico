@@ -24,12 +24,11 @@ public class AreaDibujo extends JComponent {
         repaint();
     }
 
-    public void borrarTrazos() {
-        if (!trazos.isEmpty()) {
-            trazos.clear();
-            modificado = true; // Se ha hecho un cambio
-            repaint();
-        }
+    public void borrarTodo() {
+        trazos.clear();
+        imagenFondo = null;
+        modificado = true;
+        repaint();
     }
 
     public void borrarUltimoTrazo() {
